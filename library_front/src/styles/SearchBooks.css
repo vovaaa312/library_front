@@ -1,0 +1,14 @@
+.sortable {
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-position: under;
+    position: relative;
+}
+
+.sortable:hover::after {
+   // content: ' 🔼🔽';
+    position: absolute;
+    right: -20px; /* Расстояние от текста до крайней правой части */
+    top: 0;
+    font-size: 12px;
+}
