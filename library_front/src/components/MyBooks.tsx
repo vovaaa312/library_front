@@ -89,7 +89,7 @@ const MyBooks: React.FC = () => {
             });
         }
         return sortableBooks;
-    }, [booksList, sortConfig]); // Добавлен sortConfig в зависимости
+    }, [booksList, sortConfig]);
 
     const requestSort = (key: string) => {
         let direction = 'ascending';
@@ -118,9 +118,16 @@ const MyBooks: React.FC = () => {
         navigate(`/books/${id}`);
     };
 
-    
+    const handleDelete = (id: number) => {
+        BookService.delete(id)
+            .then(() => {
+                setBooksList(booksList.filter(book => book.id !== id));
+            })
+            .catch(error => {
+                console.error("Error deleting book", error);
+            });
+    };
 
-    // Фильтрация отсортированных книг по названию
     const filteredBooks = sortedBooks.filter(book =>
         book.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -185,21 +192,27 @@ const MyBooks: React.FC = () => {
                                 <td>{book.description}</td>
                                 <td>
                                     <button
-                                        className="btn btn-info"
+                                        className="btn btn-warning"
                                         onClick={() => navigate(`/add-book/${book.id}`)}
                                         style={{marginLeft: "10px"}}
                                     >
                                         Edit
                                     </button>
                                     <button
-                                        className="btn btn-info"
+                                        className="btn btn-success"
                                         onClick={() => showDetails(book.id)}
                                         style={{marginLeft: "10px"}}
                                     >
                                         Details
                                     </button>
+                                    <button
+                                        className="btn btn-danger"
+                                        onClick={() => handleDelete(book.id)}
+                                        style={{marginLeft: "10px"}}
+                                    >
+                                        Delete
+                                    </button>
                                 </td>
-
                             </tr>
                         ))}
                         </tbody>

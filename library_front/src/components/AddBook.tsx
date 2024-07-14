@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import BookService from "../services/BookService";
 import UserService from "../services/UserService";
 import GenreService from "../services/GenreService";
 import { Book } from "../model/book/Book";
 import { AuthUser } from "../model/AuthUser";
-import { Genre } from "../model/book/Genre"; // Предполагая, что Genre определен в файле Genre.tsx
+import { Genre } from "../model/book/Genre";
 
 const AddBook: React.FC = () => {
     const navigate = useNavigate();
@@ -23,61 +23,47 @@ const AddBook: React.FC = () => {
         creator: "",
     });
 
-    const [creatorId, setCreatorId] = useState<string>(""); // State to store creator ID
-    const [creatorName, setCreatorName] = useState<string>(""); // State to display creator name
+    const [creatorId, setCreatorId] = useState<string>("");
+    const [creatorName, setCreatorName] = useState<string>("");
     const [searchAuthors, setSearchAuthors] = useState("");
     const [foundAuthors, setFoundAuthors] = useState<AuthUser[]>([]);
     const [selectedAuthors, setSelectedAuthors] = useState<AuthUser[]>([]);
-
     const [searchGenres, setSearchGenres] = useState("");
-    const [foundGenres, setFoundGenres] = useState<Genre[]>([]); // State for found genres
-    const [selectedGenres, setSelectedGenres] = useState<Genre[]>([]); // State for selected genres
+    const [foundGenres, setFoundGenres] = useState<Genre[]>([]);
+    const [selectedGenres, setSelectedGenres] = useState<Genre[]>([]);
 
     const saveOrUpdateBook = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Extract only IDs from selectedAuthors
         const authorIds = selectedAuthors.map((author) => author.id);
+        const genreIds = selectedGenres.map((genre) => genre.id);
 
-        // Ensure selectedGenres contains IDs instead of names
-        const genreIdsPromiseArray = selectedGenres.map((genre) =>
-            GenreService.getById(genre.id).then((response) => response.data.id)
-        );
+        const bookToSave = {
+            ...book,
+            creator: creatorId,
+            authors: authorIds,
+            genres: genreIds,
+        };
 
-        Promise.all(genreIdsPromiseArray)
-            .then((genreIds) => {
-                const bookToSave = {
-                    ...book,
-                    creator: creatorId,
-                    authors: authorIds, // Use only author IDs
-                    genres: genreIds, // Use only genre IDs
-                };
-
-                if (id) {
-                    // Update existing book
-                    BookService.update(parseInt(bookId), bookToSave)
-                        .then((response) => {
-                            console.log(response.data);
-                            navigate(-1); // Navigate back one step
-                        })
-                        .catch((error) => {
-                            console.log(error);
-                        });
-                } else {
-                    // Create new book
-                    BookService.create(bookToSave)
-                        .then((response) => {
-                            console.log(response.data);
-                            navigate(-1); // Navigate back one step
-                        })
-                        .catch((error) => {
-                            console.log(error);
-                        });
-                }
-            })
-            .catch((error) => {
-                console.log(error);
-            });
+        if (id) {
+            BookService.update(bookId, bookToSave)
+                .then((response) => {
+                    console.log(response.data);
+                    navigate(-1);
+                })
+                .catch((error) => {
+                    console.log(error);
+                });
+        } else {
+            BookService.create(bookToSave)
+                .then((response) => {
+                    console.log(response.data);
+                    navigate(-1);
+                })
+                .catch((error) => {
+                    console.log(error);
+                });
+        }
     };
 
     useEffect(() => {
@@ -85,29 +71,31 @@ const AddBook: React.FC = () => {
             BookService.findById(bookId)
                 .then((response) => {
                     const bookData = response.data;
-                    const creatorId = localStorage.getItem("userId") || ""; // Fetch creator ID from localStorage
+                    const creatorId = localStorage.getItem("userId") || "";
                     setBook({
                         ...bookData,
-                        creator: creatorId, // Set creator ID
+                        creator: creatorId,
                     });
 
-                    setCreatorId(creatorId); // Store creator ID in state
-                    setSelectedAuthors(
-                        bookData.authors.map((name: string, index: number) => {
-                            const [firstName, lastName] = name.split(" ");
-                            return {
-                                id: bookData.authors[index] || "", // Assuming authorIds exist in book data
-                                name: firstName,
-                                surname: lastName,
-                            } as AuthUser;
-                        })
-                    );
-                    setSelectedGenres(
-                        bookData.genres.map((genreName: string) => ({
-                            id: genreName,
-                            name: genreName,
-                        }))
-                    );
+                    setCreatorId(creatorId);
+
+                    // Fetch full author data
+                    Promise.all(
+                        bookData.authors.map((authorId: string) =>
+                            UserService.getUserById(authorId).then((response) => response.data)
+                        )
+                    ).then((authors) => {
+                        setSelectedAuthors(authors);
+                    });
+
+                    // Fetch full genre data
+                    Promise.all(
+                        bookData.genres.map((genreId: string) =>
+                            GenreService.getById(genreId).then((response) => response.data)
+                        )
+                    ).then((genres) => {
+                        setSelectedGenres(genres);
+                    });
                 })
                 .catch((error) => {
                     console.log(error);
@@ -138,14 +126,9 @@ const AddBook: React.FC = () => {
         if (searchGenres) {
             GenreService.getAll()
                 .then((response) => {
-                    const filteredGenres = response.data
-                        .filter((genre) =>
-                            genre.name.toLowerCase().startsWith(searchGenres.toLowerCase())
-                        )
-                        .map((genre) => ({
-                            id: genre.id,
-                            name: genre.name,
-                        }));
+                    const filteredGenres = response.data.filter((genre) =>
+                        genre.name.toLowerCase().startsWith(searchGenres.toLowerCase())
+                    );
                     setFoundGenres(filteredGenres);
                 })
                 .catch((error) => {
@@ -191,9 +174,9 @@ const AddBook: React.FC = () => {
     useEffect(() => {
         const creatorName = localStorage.getItem("name");
         const creatorSurname = localStorage.getItem("surname");
-        const creatorId = localStorage.getItem("userId") || ""; // Fetch creator ID from localStorage
-        setCreatorId(creatorId); // Set creator ID in state
-        setCreatorName(`${creatorName} ${creatorSurname}`); // Set creator name for display
+        const creatorId = localStorage.getItem("userId") || "";
+        setCreatorId(creatorId);
+        setCreatorName(`${creatorName} ${creatorSurname}`);
     }, []);
 
     return (
@@ -351,7 +334,7 @@ const AddBook: React.FC = () => {
                                         type="text"
                                         name="creator"
                                         className="form-control"
-                                        value={creatorName} // Display name and surname
+                                        value={creatorName}
                                         readOnly
                                     />
                                 </div>
@@ -359,7 +342,7 @@ const AddBook: React.FC = () => {
                                     <button
                                         type="button"
                                         className="btn btn-danger"
-                                        onClick={() => navigate(-1)} // Navigate back one step
+                                        onClick={() => navigate(-1)}
                                     >
                                         Back
                                     </button>

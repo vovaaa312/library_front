@@ -1,17 +1,19 @@
 import axios, { AxiosResponse } from "axios";
-import {RegisterRequest} from "../model/request/RegisterRequest.tsx";
-import {AuthRequest} from "../model/request/AuthRequest.tsx";
-import {AuthResponse} from "../model/response/AuthResponse.tsx";
+import { RegisterRequest } from "../model/request/RegisterRequest.tsx";
+import { AuthRequest } from "../model/request/AuthRequest.tsx";
+import { AuthResponse } from "../model/response/AuthResponse.tsx";
+
 const BASE_URL = "http://localhost:8080/api/auth";
 
-class AuthService{
+class AuthService {
     register(registerData: RegisterRequest): Promise<AxiosResponse<void>> {
         return axios.post<void>(`${BASE_URL}/register`, registerData);
     }
+
     login = async (authRequest: AuthRequest): Promise<AuthResponse | undefined> => {
         console.log("AUTHHH");
         try {
-            const response = await fetch('http://localhost:8080/api/auth/login', {
+            const response = await fetch(`${BASE_URL}/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -34,13 +36,11 @@ class AuthService{
             const data: AuthResponse = JSON.parse(text);
             console.log(data);
 
-            localStorage.setItem('jwt', data.jwtResponse)
-
+            localStorage.setItem('jwt', data.jwtResponse);
             localStorage.setItem('userId', data.userId);
             localStorage.setItem('username', data.username);
             localStorage.setItem('email', data.email);
             localStorage.setItem('name', data.name);
-
             localStorage.setItem('surname', data?.surname);
             localStorage.setItem('role', data?.role);
 
@@ -53,7 +53,7 @@ class AuthService{
         }
     };
 
-    sendJwtToken = async (): Promise<AxiosResponse<any>> => {
+    isTokenValid = async (): Promise<boolean> => {
         const jwt: string | null = localStorage.getItem('jwt');
 
         if (!jwt) {
@@ -61,18 +61,17 @@ class AuthService{
         }
 
         try {
-            const response: AxiosResponse<any> = await axios.get(`${BASE_URL}/protected-resource`, {
+            const response: AxiosResponse<boolean> = await axios.post(`${BASE_URL}/isTokenValid`, jwt, {
                 headers: {
-                    'Authorization': `Bearer ${jwt}`
+                    'Content-Type': 'application/json'
                 }
             });
-            return response;
+            return response.data;
         } catch (error) {
-            console.error('Error sending JWT:', error);
+            console.error('Error checking token expiration:', error);
             throw error;
         }
     };
 }
-
 
 export default new AuthService();

@@ -24,14 +24,14 @@ class BookService {
     }
 
     update(
-        id: number,
+        id: string,
         book: Book
     ): Promise<AxiosResponse<Book>> {
-        return axios.put<Book>(`${BASE_URL}/${id}`, book);
+        return axios.put<Book>(`${BASE_URL}/update/${id}`, book);
     }
 
     delete(id: number): Promise<AxiosResponse<void>> {
-        return axios.delete<void>(`${BASE_URL}/${id}`);
+        return axios.delete<void>(`${BASE_URL}/delete/${id}`);
     }
 }
 
